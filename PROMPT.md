@@ -15,10 +15,10 @@ Build a Flappy Bird clone that generates ML training data. End goal: train multi
 
 ## CURRENT TASK
 
-### Task 24: Delete Broken Recordings
+### Task 15: Evolutionary - NEAT
 **Status:** NOT STARTED
 
-(See full description below Task 23)
+(See full description in Task Queue below)
 
 ---
 
@@ -178,7 +178,7 @@ Add ability to run genetic training from the UI and use human recordings to boot
 ---
 
 ### Task 24: Delete Broken Recordings
-**Status:** NOT STARTED
+**Status:** DONE
 
 **Problem:** Old recordings from before Task 22 fix have:
 - Bird not moving (y stays at 256)
@@ -187,14 +187,17 @@ Add ability to run genetic training from the UI and use human recordings to boot
 - `started: false` for all frames
 
 **Fix:**
-- Add "Delete Broken" button in UI
-- Scan recordings for: `started: false` on last frame OR all frames have same bird.y
-- Delete these automatically OR let user confirm
-- Or just delete all `genetic_gen*` files and retrain
+- Add "Delete Broken" button in UI ✓
+- Scan recordings for: `started: false` on last frame OR all frames have same bird.y ✓
+- Delete these automatically OR let user confirm ✓
+
+**Result:**
+- Deleted 18 broken recordings
+- 66 valid recordings remain
 
 **Verify:**
-- UI shows only valid recordings
-- All displayed recordings show actual gameplay
+- UI shows only valid recordings ✓
+- All displayed recordings show actual gameplay ✓
 
 ---
 
@@ -320,6 +323,7 @@ Add ability to run genetic training from the UI and use human recordings to boot
 | 21 | 2026-01-17 | DONE | Mac-style tile view UI redesign |
 | 22 | 2026-01-17 | DONE | Fixed ML training game start bug |
 | 23 | 2026-01-17 | DONE | UI training controls + bootstrap from human |
+| 24 | 2026-01-17 | DONE | Delete broken recordings (18 deleted) |
 
 ---
 
