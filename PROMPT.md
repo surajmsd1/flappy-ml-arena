@@ -64,7 +64,7 @@ Make the multi-render viewer and main renderer look authentic to real Flappy Bir
 ---
 
 ### Task 21: UI Redesign - Mac-Style Tile View
-**Status:** NOT STARTED
+**Status:** DONE
 
 Redesign the Recording Manager UI to be sleek and Mac-like.
 
@@ -249,6 +249,7 @@ else:
 | 14 | 2026-01-17 | DONE | Simple genetic algo, 100 gens trained |
 | 19 | 2026-01-17 | DONE | Recording Manager UI (Flask) |
 | 20 | 2026-01-17 | DONE | Polished viewer & renderer with visual effects |
+| 21 | 2026-01-17 | DONE | Mac-style tile view UI redesign |
 
 ---
 
