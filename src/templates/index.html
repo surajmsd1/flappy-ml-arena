@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Recording Manager</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: #16213e;
+            padding: 15px 25px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-card h3 {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .controls select, .controls input, .controls button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background: #16213e;
+            color: #eee;
+            font-size: 14px;
+        }
+        .controls button {
+            cursor: pointer;
+            background: #4ade80;
+            color: #000;
+            border: none;
+            font-weight: bold;
+        }
+        .controls button:hover {
+            background: #22c55e;
+        }
+        .controls button.danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        .controls button.danger:hover {
+            background: #dc2626;
+        }
+        .controls button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .recordings-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .recordings-table th, .recordings-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        .recordings-table th {
+            background: #0f3460;
+            cursor: pointer;
+            user-select: none;
+        }
+        .recordings-table th:hover {
+            background: #1a4a7a;
+        }
+        .recordings-table tr:hover {
+            background: #1a3a5e;
+        }
+        .recordings-table input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .model-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .model-badge.genetic { background: #8b5cf6; }
+        .model-badge.neat { background: #06b6d4; }
+        .model-badge.imitation { background: #f59e0b; }
+        .model-badge.dqn { background: #ec4899; }
+        .model-badge.human { background: #22c55e; }
+        .model-badge.unknown { background: #6b7280; }
+        .score {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .selection-info {
+            color: #888;
+            font-size: 14px;
+        }
+        .analytics {
+            margin-top: 30px;
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .analytics h2 {
+            margin-bottom: 15px;
+            color: #4ade80;
+        }
+        .model-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .model-stat {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .model-stat h4 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .model-stat .detail {
+            font-size: 13px;
+            color: #aaa;
+            margin: 3px 0;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #22c55e;
+            color: #000;
+            border-radius: 6px;
+            font-weight: bold;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.error {
+            background: #ef4444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐦 Flappy Bird Recording Manager</h1>
+
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card">
+                <h3>Total Recordings</h3>
+                <div class="value" id="totalRecordings">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Frames</h3>
+                <div class="value" id="totalFrames">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Size</h3>
+                <div class="value" id="totalSize">-</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="modelFilter">
+                <option value="all">All Models</option>
+                <option value="genetic">Genetic</option>
+                <option value="neat">NEAT</option>
+                <option value="imitation">Imitation</option>
+                <option value="dqn">DQN</option>
+                <option value="human">Human</option>
+            </select>
+            <select id="sortBy">
+                <option value="mtime">Sort by Date</option>
+                <option value="score">Sort by Score</option>
+                <option value="frames">Sort by Frames</option>
+                <option value="generation">Sort by Generation</option>
+                <option value="size">Sort by Size</option>
+                <option value="name">Sort by Name</option>
+            </select>
+            <select id="sortOrder">
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+            </select>
+            <input type="number" id="minScore" placeholder="Min Score" style="width: 100px;">
+            <input type="number" id="maxScore" placeholder="Max Score" style="width: 100px;">
+            <button onclick="applyFilters()">Apply</button>
+            <button onclick="resetFilters()">Reset</button>
+        </div>
+
+        <div class="controls">
+            <span class="selection-info"><span id="selectedCount">0</span> selected</span>
+            <select id="gridSize">
+                <option value="1">1x1 Grid</option>
+                <option value="2" selected>2x2 Grid</option>
+                <option value="3">3x3 Grid</option>
+                <option value="4">4x4 Grid</option>
+            </select>
+            <button id="playBtn" onclick="playSelected()" disabled>▶ Play Selected</button>
+            <button id="deleteBtn" class="danger" onclick="deleteSelected()" disabled>🗑 Delete Selected</button>
+            <button onclick="selectAll()">Select All</button>
+            <button onclick="selectNone()">Select None</button>
+        </div>
+
+        <table class="recordings-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()"></th>
+                    <th onclick="sortBy('name')">Filename</th>
+                    <th onclick="sortBy('model')">Model</th>
+                    <th onclick="sortBy('generation')">Gen</th>
+                    <th onclick="sortBy('score')">Score</th>
+                    <th onclick="sortBy('frames')">Frames</th>
+                    <th onclick="sortBy('duration')">Duration</th>
+                    <th onclick="sortBy('size')">Size</th>
+                </tr>
+            </thead>
+            <tbody id="recordingsBody">
+                <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+            </tbody>
+        </table>
+
+        <div class="analytics" id="analytics">
+            <h2>📊 Analytics by Model</h2>
+            <div class="model-stats" id="modelStats"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let recordings = [];
+        let selectedFiles = new Set();
+
+        async function loadRecordings() {
+            const params = new URLSearchParams();
+
+            const modelFilter = document.getElementById('modelFilter').value;
+            if (modelFilter !== 'all') params.set('model_type', modelFilter);
+
+            const sortBy = document.getElementById('sortBy').value;
+            params.set('sort', sortBy);
+
+            const sortOrder = document.getElementById('sortOrder').value;
+            params.set('order', sortOrder);
+
+            const minScore = document.getElementById('minScore').value;
+            if (minScore) params.set('min_score', minScore);
+
+            const maxScore = document.getElementById('maxScore').value;
+            if (maxScore) params.set('max_score', maxScore);
+
+            try {
+                const response = await fetch('/api/recordings?' + params.toString());
+                recordings = await response.json();
+                renderRecordings();
+            } catch (err) {
+                showToast('Error loading recordings', true);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+
+                document.getElementById('totalRecordings').textContent = stats.total_recordings;
+                document.getElementById('totalFrames').textContent = stats.total_frames.toLocaleString();
+                document.getElementById('totalSize').textContent = stats.total_size_mb + ' MB';
+
+                // Render model stats
+                const modelStatsDiv = document.getElementById('modelStats');
+                modelStatsDiv.innerHTML = '';
+
+                for (const [model, data] of Object.entries(stats.by_model)) {
+                    const div = document.createElement('div');
+                    div.className = 'model-stat';
+                    div.innerHTML = `
+                        <h4><span class="model-badge ${model}">${model}</span></h4>
+                        <div class="detail">Count: ${data.count}</div>
+                        <div class="detail">Avg Score: ${data.avg_score}</div>
+                        <div class="detail">Max Score: ${data.max_score}</div>
+                        <div class="detail">Min Score: ${data.min_score}</div>
+                    `;
+                    modelStatsDiv.appendChild(div);
+                }
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+
+        function renderRecordings() {
+            const tbody = document.getElementById('recordingsBody');
+
+            if (recordings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No recordings found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = recordings.map(r => `
+                <tr>
+                    <td><input type="checkbox" data-filename="${r.filename}"
+                        ${selectedFiles.has(r.filename) ? 'checked' : ''}
+                        onchange="toggleSelection('${r.filename}')"></td>
+                    <td>${r.filename}</td>
+                    <td><span class="model-badge ${r.model_type}">${r.model_type}</span></td>
+                    <td>${r.generation !== null ? r.generation : '-'}</td>
+                    <td class="score">${r.score}</td>
+                    <td>${r.frames.toLocaleString()}</td>
+                    <td>${r.duration_sec}s</td>
+                    <td>${formatSize(r.file_size)}</td>
+                </tr>
+            `).join('');
+
+            updateSelectionUI();
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function toggleSelection(filename) {
+            if (selectedFiles.has(filename)) {
+                selectedFiles.delete(filename);
+            } else {
+                selectedFiles.add(filename);
+            }
+            updateSelectionUI();
+        }
+
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAllCheckbox');
+            if (checkbox.checked) {
+                recordings.forEach(r => selectedFiles.add(r.filename));
+            } else {
+                selectedFiles.clear();
+            }
+            renderRecordings();
+        }
+
+        function selectAll() {
+            recordings.forEach(r => selectedFiles.add(r.filename));
+            document.getElementById('selectAllCheckbox').checked = true;
+            renderRecordings();
+        }
+
+        function selectNone() {
+            selectedFiles.clear();
+            document.getElementById('selectAllCheckbox').checked = false;
+            renderRecordings();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedFiles.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('playBtn').disabled = count === 0;
+            document.getElementById('deleteBtn').disabled = count === 0;
+        }
+
+        async function playSelected() {
+            if (selectedFiles.size === 0) return;
+
+            const gridSize = parseInt(document.getElementById('gridSize').value);
+
+            try {
+                const response = await fetch('/api/play', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        filenames: Array.from(selectedFiles),
+                        grid: gridSize
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`Playing ${result.playing} recordings in ${result.grid}x${result.grid} grid`);
+                } else {
+                    showToast(result.error, true);
+                }
+            } catch (err) {
+                showToast('Error launching player', true);
+            }
+        }
+
+        async function deleteSelected() {
+            if (selectedFiles.size === 0) return;
+
+            if (!confirm(`Delete ${selectedFiles.size} recording(s)?`)) return;
+
+            let deleted = 0;
+            let errors = 0;
+
+            for (const filename of selectedFiles) {
+                try {
+                    const response = await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({filename})
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        deleted++;
+                    } else {
+                        errors++;
+                    }
+                } catch (err) {
+                    errors++;
+                }
+            }
+
+            selectedFiles.clear();
+            loadRecordings();
+            loadStats();
+
+            if (errors > 0) {
+                showToast(`Deleted ${deleted}, ${errors} errors`, true);
+            } else {
+                showToast(`Deleted ${deleted} recording(s)`);
+            }
+        }
+
+        function applyFilters() {
+            loadRecordings();
+        }
+
+        function resetFilters() {
+            document.getElementById('modelFilter').value = 'all';
+            document.getElementById('sortBy').value = 'mtime';
+            document.getElementById('sortOrder').value = 'desc';
+            document.getElementById('minScore').value = '';
+            document.getElementById('maxScore').value = '';
+            loadRecordings();
+        }
+
+        function sortBy(column) {
+            const sortBySelect = document.getElementById('sortBy');
+            const sortOrderSelect = document.getElementById('sortOrder');
+
+            if (sortBySelect.value === column) {
+                sortOrderSelect.value = sortOrderSelect.value === 'desc' ? 'asc' : 'desc';
+            } else {
+                sortBySelect.value = column;
+                sortOrderSelect.value = 'desc';
+            }
+
+            loadRecordings();
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // Initial load
+        loadRecordings();
+        loadStats();
+    </script>
+</body>
+</html>
