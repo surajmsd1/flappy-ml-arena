@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+logs/
+
+# Session files (Ralph orchestrator)
+.call_count
+.circuit_breaker_*
+.claude_session_id
+.exit_signals
+.last_reset
+.ralph_session*
+.response_analysis
+progress.json
+status.json
+
+# Recordings (user data, not tracked)
+# recordings/
+
+# Training data
+src/training_data.json
