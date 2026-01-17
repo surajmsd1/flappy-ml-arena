@@ -192,8 +192,14 @@ def evaluate_agent(agent: Agent, seed: int, max_frames: int = 3000) -> Tuple[flo
         if not state.alive:
             break
 
-        features = extract_features(state)
-        jump = agent.network.decide(features.to_list())
+        # First frame: always jump to start the game
+        # The game only begins physics/pipes when started=True (triggered by first jump)
+        if not state.started:
+            jump = True
+        else:
+            # Normal decision making based on game features
+            features = extract_features(state)
+            jump = agent.network.decide(features.to_list())
 
         step(state, jump=jump)
         recording.add_frame(state.frame, jump, state)

@@ -107,7 +107,7 @@ Redesign the Recording Manager UI to be sleek and Mac-like.
 ---
 
 ### Task 22: Fix ML Training - Game Start Bug
-**Status:** NOT STARTED
+**Status:** DONE
 
 **Problem:** ML models are not starting the game - bird just sits there, no pipes spawn.
 
@@ -250,6 +250,7 @@ else:
 | 19 | 2026-01-17 | DONE | Recording Manager UI (Flask) |
 | 20 | 2026-01-17 | DONE | Polished viewer & renderer with visual effects |
 | 21 | 2026-01-17 | DONE | Mac-style tile view UI redesign |
+| 22 | 2026-01-17 | DONE | Fixed ML training game start bug |
 
 ---
 
