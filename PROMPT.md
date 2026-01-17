@@ -15,93 +15,157 @@ Build a Flappy Bird clone that generates ML training data. End goal: train multi
 
 ## CURRENT TASK
 
-### Task 9: Compact Recording Format
-**Status:** NOT STARTED
+### Task 20: Polished Viewer & Renderer
+**Status:** DONE
 
-**What to do:**
-1. Add `save_compact(recording, filepath)` - stores only seed + list of jump booleans
-2. Add `load_compact(filepath)` - loads compact format
-3. Add `expand_recording(compact)` - regenerates full state from seed + inputs (uses determinism)
-4. Keep verbose format available for debugging
+Make the multi-render viewer and main renderer look authentic to real Flappy Bird. The arena should be fun to watch!
+
+**Renderer Improvements (renderer.py):**
+- Add scrolling clouds in the background (parallax effect)
+- Add city/buildings silhouette in background
+- Improve ground with grass texture pattern
+- Bird wing animation (flap when jumping)
+- Better pipe shading/gradients
+- Day/night color themes option
+
+**Viewer Improvements (viewer.py):**
+- **FULL SCALE**: Remove the 50% scaling - each cell should be native resolution
+- Or add a `--scale=1.0` option to control cell size
+- Bird should have ALL details: wing, eye, beak, rotation animation
+- Pipe caps and shading (same as renderer.py)
+- Clouds visible in each cell
+- Smooth animations, no visual shortcuts
+
+**Window/Grid Options:**
+- `--fullscreen` option
+- `--cols=N` instead of `--grid=N` (auto-calculate rows from recordings count)
+- Auto-fit to screen while maintaining aspect ratio
+- Minimum cell size of 200x300 pixels
+
+**Visual Polish:**
+- Score with drop shadow
+- "GAME OVER" with red tint overlay
+- Generation/model label with better styling
+- FPS counter option (`--fps`)
+- Speed controls visible on screen (current: 1x, 2x, etc.)
 
 **Deliverables:**
-- [ ] Compact save/load functions in recording.py
-- [ ] expand_recording() that regenerates full state
-- [ ] Test: save compact, expand, verify identical to original
+- [ ] Clouds + parallax background in renderer.py
+- [ ] Full-detail bird in viewer.py cells
+- [ ] Full-scale or configurable scale in viewer.py
+- [ ] Pipe caps and proper shading in both files
+- [ ] `--fullscreen` and `--scale` options
 
-**How to verify:**
-- Save a recording in compact format
-- Load and expand it
-- Compare frame-by-frame with original - should match exactly
+**Verify:**
+- Run viewer with 4 recordings, looks identical to main game
+- Clouds scroll, bird rotates, pipes have caps
+- Each cell large enough to see all details
+
+---
+
+### Task 21: UI Redesign - Mac-Style Tile View
+**Status:** NOT STARTED
+
+Redesign the Recording Manager UI to be sleek and Mac-like.
+
+**Layout Changes:**
+- **Tile view by default** (like Mac Finder icons view)
+- Each recording as a card/tile with thumbnail preview
+- Group recordings by iteration/generation with collapsible sections
+- Subheadings: "Genetic Gen 0", "Genetic Gen 100", etc.
+
+**Selection & Playback:**
+- Checkbox on each tile for selection
+- "Select All" button per group/subheading
+- "Play Selected" button (opens viewer with selected recordings)
+- "Play All in Group" button per section
+- Shift+click for range selection
+
+**Visual Design (Mac-like):**
+- Gray sleek color scheme (#f5f5f7 background, #1d1d1f text)
+- Rounded corners on cards (12px radius)
+- Subtle shadows (0 2px 8px rgba(0,0,0,0.1))
+- SF-style system font stack
+- Hover states with slight lift effect
+- Selected state with blue border (#007aff)
+
+**Card Contents:**
+- Mini preview frame (first frame of recording)
+- Model type badge (colored: genetic=green, neat=purple, etc.)
+- Score prominently displayed
+- Generation/epoch number
+- Duration in seconds
+- File size
+
+**Deliverables:**
+- [ ] Tile view layout in templates
+- [ ] Group by generation with collapsible sections
+- [ ] Select all per group
+- [ ] Mac-like gray color scheme
+- [ ] Hover/selected states
+
+---
+
+### Task 22: Fix ML Training - Game Start Bug
+**Status:** NOT STARTED
+
+**Problem:** ML models are not starting the game - bird just sits there, no pipes spawn.
+
+**Root Cause:** Game requires first jump to start. Models need to:
+1. Jump immediately on first frame to start the game
+2. Then make decisions based on game state
+
+**Fix in genetic.py (and all ML modules):**
+```python
+# First frame: always jump to start the game
+if state.frame == 0 or not state.started:
+    jump = True
+else:
+    # Normal decision making
+    jump = agent.network.decide(features.to_list())
+```
+
+**Verify:**
+- Run genetic training, see pipes appearing
+- Birds actually fly and hit pipes (not just sitting)
+- Scores should vary (not all 0)
 
 ---
 
 ## TASK QUEUE (Do not start until current task is DONE)
 
-### Task 10: Sound System (Optional)
-- Add sound effects using pygame.mixer (flap, score, death)
-- Sound only enabled via `--sound` flag or `sound=True` parameter
-- Auto-disable sound when >3 game renders are active
-- No sound in headless mode
-- Efficient: don't even load sound files if flag is off
-- **Verify:** Play game with --sound, hear effects. Play without flag, no sound loaded.
+### Task 15: Evolutionary - NEAT
+> **AUTO-STOP:** Create EXIT_SIGNAL after completing this task. User will review before continuing.
 
-### Task 11: Multi-Render Viewer App
-- Create separate app: `src/viewer.py`
-- Display NxN grid of game replays simultaneously
-- Usage: `python viewer.py --grid=4 recordings/*.json`
-- Shows training progress across iterations
-- Label each render with filename/approach/generation
-- **Verify:** Run viewer with 4+ recordings, see them play in grid
-
-### Task 12: GitHub Repository Setup
-- Initialize git if not already done
-- Create repo `flappy-ml-arena` on github.com/surajmsd1
-- Add .gitignore for Python, venv, __pycache__, etc.
-- Push initial code
-- Add README.md with project description
-- **Verify:** Repo visible at github.com/surajmsd1/flappy-ml-arena
-
-### Task 13: ML Feature Extraction
-- Extract features from GameState for ML input
-- Features: bird_y, bird_velocity, bird_rotation
-- Features: next_pipe_distance, next_pipe_gap_y, next_pipe_gap_size
-- Normalize all features to 0-1 range
-- Add `get_features(state) -> List[float]` function
-- **Verify:** Print features each frame, values in 0-1 range, make sense
-
-### Task 14: Evolutionary - Simple Genetic (Interactive)
-- Fixed neural net architecture (features -> hidden -> jump probability)
-- Population of N agents with random weights
-- Fitness = score achieved (or frames survived)
-- Selection: keep top performers, mutate to create next generation
-- **STOP and ask user** before running generations
-- User specifies: how many generations, how many replays to save
-- Save replays as `genetic_gen{N}_best{M}.json`
-- **Verify:** Ask user, run generations, save labeled replays
-
-### Task 15: Evolutionary - NEAT (Interactive)
 - NeuroEvolution of Augmenting Topologies
 - Evolves both network structure AND weights
 - Use neat-python library
-- **STOP and ask user** before major milestones
-- Save as `neat_gen{N}_best{M}.json`
+- **Phase 1:** 8 baseline recordings (gen 0)
+- **Phase 2:** Train 100 generations
+- **Phase 3:** 8 trained recordings (gen 100)
+- Save as `neat_gen{N}_replay{M}.json`
+- Create EXIT_SIGNAL and STOP
 - **Verify:** NEAT evolves increasingly complex networks, performance improves
 
-### Task 16: Imitation Learning (Interactive)
+### Task 16: Imitation Learning
+> **AUTO-STOP:** Create EXIT_SIGNAL after completing this task.
+
 - Learn from human recordings (behavioral cloning)
 - Simple neural net: features -> jump probability
-- Train on human gameplay data
-- **STOP and ask user** before training
-- User specifies: epochs, replays to generate
-- Save replays as `imitation_epoch{N}_replay{M}.json`
+- Train on existing human gameplay recordings
+- Generate 8 replays showing learned behavior
+- Save replays as `imitation_replay{M}.json`
+- Create EXIT_SIGNAL and STOP
 - **Verify:** Model mimics human-like play patterns
 
-### Task 17: DQN Reinforcement Learning (Interactive)
+### Task 17: DQN Reinforcement Learning
+> **AUTO-STOP:** Create EXIT_SIGNAL after completing this task.
+
 - Deep Q-Network with experience replay
 - Learn optimal policy through trial and error
-- **STOP and ask user** for training duration
-- Save as `dqn_step{N}_replay{M}.json`
+- Train for 10,000 steps
+- Save 8 replays as `dqn_replay{M}.json`
+- Create EXIT_SIGNAL and STOP
 - **Verify:** DQN learns to play, improves over time
 
 ### Task 18: Model Comparison Dashboard
@@ -177,6 +241,14 @@ Build a Flappy Bird clone that generates ML training data. End goal: train multi
 | 6 | 2026-01-17 | DONE | Recording system, auto-save |
 | 7 | 2026-01-17 | DONE | Playback with determinism verified |
 | 8 | 2026-01-17 | DONE | Headless 150k FPS |
+| 9 | 2026-01-17 | DONE | Compact recording format (31.5x compression) |
+| 10 | 2026-01-17 | DONE | Sound system with lazy loading |
+| 11 | 2026-01-17 | DONE | Multi-render viewer app |
+| 12 | 2026-01-17 | DONE | GitHub repo flappy-ml-arena |
+| 13 | 2026-01-17 | DONE | ML feature extraction |
+| 14 | 2026-01-17 | DONE | Simple genetic algo, 100 gens trained |
+| 19 | 2026-01-17 | DONE | Recording Manager UI (Flask) |
+| 20 | 2026-01-17 | DONE | Polished viewer & renderer with visual effects |
 
 ---
 
