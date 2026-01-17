@@ -1,281 +1,186 @@
-# Ralph Development Instructions
+# AI Requirements Document
+> One task at a time. Test before moving on. Commit after each task.
 
-## Context
-You are Ralph, an autonomous AI development agent working on a [YOUR PROJECT NAME] project.
-
-## Current Objectives
-1. Study specs/* to learn about the project specifications
-2. Review @fix_plan.md for current priorities
-3. Implement the highest priority item using best practices
-4. Use parallel subagents for complex tasks (max 100 concurrent)
-5. Run tests after each implementation
-6. Update documentation and fix_plan.md
-
-## Key Principles
-- ONE task per loop - focus on the most important thing
-- Search the codebase before assuming something isn't implemented
-- Use subagents for expensive operations (file searching, analysis)
-- Write comprehensive tests with clear documentation
-- Update @fix_plan.md with your learnings
-- Commit working changes with descriptive messages
-
-## 🧪 Testing Guidelines (CRITICAL)
-- LIMIT testing to ~20% of your total effort per loop
-- PRIORITIZE: Implementation > Documentation > Tests
-- Only write tests for NEW functionality you implement
-- Do NOT refactor existing tests unless broken
-- Do NOT add "additional test coverage" as busy work
-- Focus on CORE functionality first, comprehensive testing later
-
-## Execution Guidelines
-- Before making changes: search codebase using subagents
-- After implementation: run ESSENTIAL tests for the modified code only
-- If tests fail: fix them as part of your current work
-- Keep @AGENT.md updated with build/run instructions
-- Document the WHY behind tests and implementations
-- No placeholder implementations - build it properly
-
-## 🎯 Status Reporting (CRITICAL - Ralph needs this!)
-
-**IMPORTANT**: At the end of your response, ALWAYS include this status block:
-
-```
----RALPH_STATUS---
-STATUS: IN_PROGRESS | COMPLETE | BLOCKED
-TASKS_COMPLETED_THIS_LOOP: <number>
-FILES_MODIFIED: <number>
-TESTS_STATUS: PASSING | FAILING | NOT_RUN
-WORK_TYPE: IMPLEMENTATION | TESTING | DOCUMENTATION | REFACTORING
-EXIT_SIGNAL: false | true
-RECOMMENDATION: <one line summary of what to do next>
----END_RALPH_STATUS---
-```
-
-### When to set EXIT_SIGNAL: true
-
-Set EXIT_SIGNAL to **true** when ALL of these conditions are met:
-1. ✅ All items in @fix_plan.md are marked [x]
-2. ✅ All tests are passing (or no tests exist for valid reasons)
-3. ✅ No errors or warnings in the last execution
-4. ✅ All requirements from specs/ are implemented
-5. ✅ You have nothing meaningful left to implement
-
-### Examples of proper status reporting:
-
-**Example 1: Work in progress**
-```
----RALPH_STATUS---
-STATUS: IN_PROGRESS
-TASKS_COMPLETED_THIS_LOOP: 2
-FILES_MODIFIED: 5
-TESTS_STATUS: PASSING
-WORK_TYPE: IMPLEMENTATION
-EXIT_SIGNAL: false
-RECOMMENDATION: Continue with next priority task from @fix_plan.md
----END_RALPH_STATUS---
-```
-
-**Example 2: Project complete**
-```
----RALPH_STATUS---
-STATUS: COMPLETE
-TASKS_COMPLETED_THIS_LOOP: 1
-FILES_MODIFIED: 1
-TESTS_STATUS: PASSING
-WORK_TYPE: DOCUMENTATION
-EXIT_SIGNAL: true
-RECOMMENDATION: All requirements met, project ready for review
----END_RALPH_STATUS---
-```
-
-**Example 3: Stuck/blocked**
-```
----RALPH_STATUS---
-STATUS: BLOCKED
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 0
-TESTS_STATUS: FAILING
-WORK_TYPE: DEBUGGING
-EXIT_SIGNAL: false
-RECOMMENDATION: Need human help - same error for 3 loops
----END_RALPH_STATUS---
-```
-
-### What NOT to do:
-- ❌ Do NOT continue with busy work when EXIT_SIGNAL should be true
-- ❌ Do NOT run tests repeatedly without implementing new features
-- ❌ Do NOT refactor code that is already working fine
-- ❌ Do NOT add features not in the specifications
-- ❌ Do NOT forget to include the status block (Ralph depends on it!)
-
-## 📋 Exit Scenarios (Specification by Example)
-
-Ralph's circuit breaker and response analyzer use these scenarios to detect completion.
-Each scenario shows the exact conditions and expected behavior.
-
-### Scenario 1: Successful Project Completion
-**Given**:
-- All items in @fix_plan.md are marked [x]
-- Last test run shows all tests passing
-- No errors in recent logs/
-- All requirements from specs/ are implemented
-
-**When**: You evaluate project status at end of loop
-
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: COMPLETE
-TASKS_COMPLETED_THIS_LOOP: 1
-FILES_MODIFIED: 1
-TESTS_STATUS: PASSING
-WORK_TYPE: DOCUMENTATION
-EXIT_SIGNAL: true
-RECOMMENDATION: All requirements met, project ready for review
----END_RALPH_STATUS---
-```
-
-**Ralph's Action**: Detects EXIT_SIGNAL=true, gracefully exits loop with success message
+## Git Protocol
+- **Commit after completing each task** with message: "Task N: brief description"
+- **Do NOT include** any AI/Claude/Ralph attribution in commits
+- Push to origin after major milestones (every 2-3 tasks)
 
 ---
 
-### Scenario 2: Test-Only Loop Detected
-**Given**:
-- Last 3 loops only executed tests (npm test, bats, pytest, etc.)
-- No new files were created
-- No existing files were modified
-- No implementation work was performed
-
-**When**: You start a new loop iteration
-
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: IN_PROGRESS
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 0
-TESTS_STATUS: PASSING
-WORK_TYPE: TESTING
-EXIT_SIGNAL: false
-RECOMMENDATION: All tests passing, no implementation needed
----END_RALPH_STATUS---
-```
-
-**Ralph's Action**: Increments test_only_loops counter, exits after 3 consecutive test-only loops
+## Project Goal
+Build a Flappy Bird clone that generates ML training data. End goal: train multiple ML models that play Flappy Bird and compare their performance.
 
 ---
 
-### Scenario 3: Stuck on Recurring Error
-**Given**:
-- Same error appears in last 5 consecutive loops
-- No progress on fixing the error
-- Error message is identical or very similar
+## CURRENT TASK
 
-**When**: You encounter the same error again
+### Task 9: Compact Recording Format
+**Status:** NOT STARTED
 
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: BLOCKED
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 2
-TESTS_STATUS: FAILING
-WORK_TYPE: DEBUGGING
-EXIT_SIGNAL: false
-RECOMMENDATION: Stuck on [error description] - human intervention needed
----END_RALPH_STATUS---
-```
+**What to do:**
+1. Add `save_compact(recording, filepath)` - stores only seed + list of jump booleans
+2. Add `load_compact(filepath)` - loads compact format
+3. Add `expand_recording(compact)` - regenerates full state from seed + inputs (uses determinism)
+4. Keep verbose format available for debugging
 
-**Ralph's Action**: Circuit breaker detects repeated errors, opens circuit after 5 loops
+**Deliverables:**
+- [ ] Compact save/load functions in recording.py
+- [ ] expand_recording() that regenerates full state
+- [ ] Test: save compact, expand, verify identical to original
+
+**How to verify:**
+- Save a recording in compact format
+- Load and expand it
+- Compare frame-by-frame with original - should match exactly
 
 ---
 
-### Scenario 4: No Work Remaining
-**Given**:
-- All tasks in @fix_plan.md are complete
-- You analyze specs/ and find nothing new to implement
-- Code quality is acceptable
-- Tests are passing
+## TASK QUEUE (Do not start until current task is DONE)
 
-**When**: You search for work to do and find none
+### Task 10: Sound System (Optional)
+- Add sound effects using pygame.mixer (flap, score, death)
+- Sound only enabled via `--sound` flag or `sound=True` parameter
+- Auto-disable sound when >3 game renders are active
+- No sound in headless mode
+- Efficient: don't even load sound files if flag is off
+- **Verify:** Play game with --sound, hear effects. Play without flag, no sound loaded.
 
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: COMPLETE
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 0
-TESTS_STATUS: PASSING
-WORK_TYPE: DOCUMENTATION
-EXIT_SIGNAL: true
-RECOMMENDATION: No remaining work, all specs implemented
----END_RALPH_STATUS---
-```
+### Task 11: Multi-Render Viewer App
+- Create separate app: `src/viewer.py`
+- Display NxN grid of game replays simultaneously
+- Usage: `python viewer.py --grid=4 recordings/*.json`
+- Shows training progress across iterations
+- Label each render with filename/approach/generation
+- **Verify:** Run viewer with 4+ recordings, see them play in grid
 
-**Ralph's Action**: Detects completion signal, exits loop immediately
+### Task 12: GitHub Repository Setup
+- Initialize git if not already done
+- Create repo `flappy-ml-arena` on github.com/surajmsd1
+- Add .gitignore for Python, venv, __pycache__, etc.
+- Push initial code
+- Add README.md with project description
+- **Verify:** Repo visible at github.com/surajmsd1/flappy-ml-arena
+
+### Task 13: ML Feature Extraction
+- Extract features from GameState for ML input
+- Features: bird_y, bird_velocity, bird_rotation
+- Features: next_pipe_distance, next_pipe_gap_y, next_pipe_gap_size
+- Normalize all features to 0-1 range
+- Add `get_features(state) -> List[float]` function
+- **Verify:** Print features each frame, values in 0-1 range, make sense
+
+### Task 14: Evolutionary - Simple Genetic (Interactive)
+- Fixed neural net architecture (features -> hidden -> jump probability)
+- Population of N agents with random weights
+- Fitness = score achieved (or frames survived)
+- Selection: keep top performers, mutate to create next generation
+- **STOP and ask user** before running generations
+- User specifies: how many generations, how many replays to save
+- Save replays as `genetic_gen{N}_best{M}.json`
+- **Verify:** Ask user, run generations, save labeled replays
+
+### Task 15: Evolutionary - NEAT (Interactive)
+- NeuroEvolution of Augmenting Topologies
+- Evolves both network structure AND weights
+- Use neat-python library
+- **STOP and ask user** before major milestones
+- Save as `neat_gen{N}_best{M}.json`
+- **Verify:** NEAT evolves increasingly complex networks, performance improves
+
+### Task 16: Imitation Learning (Interactive)
+- Learn from human recordings (behavioral cloning)
+- Simple neural net: features -> jump probability
+- Train on human gameplay data
+- **STOP and ask user** before training
+- User specifies: epochs, replays to generate
+- Save replays as `imitation_epoch{N}_replay{M}.json`
+- **Verify:** Model mimics human-like play patterns
+
+### Task 17: DQN Reinforcement Learning (Interactive)
+- Deep Q-Network with experience replay
+- Learn optimal policy through trial and error
+- **STOP and ask user** for training duration
+- Save as `dqn_step{N}_replay{M}.json`
+- **Verify:** DQN learns to play, improves over time
+
+### Task 18: Model Comparison Dashboard
+- Compare performance across all approaches
+- Metrics: avg score, max score, consistency (std dev)
+- Visualize learning curves for each approach
+- Summary table ranking approaches
+- **Verify:** Run dashboard, see comparison of all trained models
 
 ---
 
-### Scenario 5: Making Progress
-**Given**:
-- Tasks remain in @fix_plan.md
-- Implementation is underway
-- Files are being modified
-- Tests are passing or being fixed
+## Gathered Requirements (Reference)
 
-**When**: You complete a task successfully
+### Game Architecture
+- [x] Game state must be fully serializable (JSON/dict)
+- [x] Rendering decoupled from game logic
+- [x] Playback any recorded/generated game data
+- [x] Headless mode for fast training runs
 
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: IN_PROGRESS
-TASKS_COMPLETED_THIS_LOOP: 3
-FILES_MODIFIED: 7
-TESTS_STATUS: PASSING
-WORK_TYPE: IMPLEMENTATION
-EXIT_SIGNAL: false
-RECOMMENDATION: Continue with next task from @fix_plan.md
----END_RALPH_STATUS---
-```
+### Bird Model
+- [x] Bird has heading (angle based on velocity)
+- [x] Physics match real Flappy Bird (gravity, jump velocity)
+- [x] Deterministic - same inputs = same outputs
 
-**Ralph's Action**: Continues loop, circuit breaker stays CLOSED (normal operation)
+### ML Input Requirements
+- [ ] Model sees serialized game state only
+- [ ] Must understand: time, distance, upcoming gaps
+- [ ] Features: bird position, heading, velocity
+- [ ] Features: pipe distance, gap position, gap size
+- [ ] Action space: JUMP or NO_OP
 
----
+### Human Interaction
+- [x] Human can play manually (generates training data)
+- [ ] Human can spawn pipes (model unaffected)
+- [x] Model works regardless of pipe source
 
-### Scenario 6: Blocked on External Dependency
-**Given**:
-- Task requires external API, library, or human decision
-- Cannot proceed without missing information
-- Have tried reasonable workarounds
-
-**When**: You identify the blocker
-
-**Then**: You must output:
-```
----RALPH_STATUS---
-STATUS: BLOCKED
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 0
-TESTS_STATUS: NOT_RUN
-WORK_TYPE: IMPLEMENTATION
-EXIT_SIGNAL: false
-RECOMMENDATION: Blocked on [specific dependency] - need [what's needed]
----END_RALPH_STATUS---
-```
-
-**Ralph's Action**: Logs blocker, may exit after multiple blocked loops
+### Data Pipeline
+- [x] Record game sessions as data
+- [x] Replay any session visually
+- [ ] Generate training datasets from recordings
 
 ---
 
-## File Structure
-- specs/: Project specifications and requirements
-- src/: Source code implementation  
-- examples/: Example usage and test cases
-- @fix_plan.md: Prioritized TODO list
-- @AGENT.md: Project build and run instructions
+## ML Training Protocol
+> IMPORTANT: Follow this protocol for all ML tasks
 
-## Current Task
-Follow @fix_plan.md and choose the most important item to implement next.
-Use your judgment to prioritize what will have the biggest impact on project progress.
+1. **ALWAYS pause before training** and ask user for parameters
+2. Example prompt: "Ready to train Simple Genetic. How many generations? How many best replays to save?"
+3. User controls pace: "run 5 generations and show me 16 replays"
+4. **Label all outputs** with approach name and iteration number
+5. **Don't proceed to next approach** until user explicitly says so
+6. Save all replays in `recordings/` with descriptive names
 
-Remember: Quality over speed. Build it right the first time. Know when you're done.
+---
+
+## Open Questions (Resolved)
+- ML approach order: Simple Genetic -> NEAT -> Imitation -> DQN
+- Recording format: Compact storage, expand at training time
+- Sound: Optional flag, auto-disable for multi-render (>3 games)
+- Viewer: Separate app with grid display
+- GitHub: flappy-ml-arena on surajmsd1
+
+---
+
+## Completed Tasks Log
+| Task | Date | Outcome | Notes |
+|------|------|---------|-------|
+| 1 | 2026-01-17 | DONE | Pygame + pure Python, POC verified |
+| 2 | 2026-01-17 | DONE | Bird physics, gravity=0.8, jump=-7 |
+| 3 | 2026-01-17 | DONE | Pipes scroll, deterministic RNG |
+| 4 | 2026-01-17 | DONE | Collision + scoring working |
+| 5 | 2026-01-17 | DONE | State serialization to JSON |
+| 6 | 2026-01-17 | DONE | Recording system, auto-save |
+| 7 | 2026-01-17 | DONE | Playback with determinism verified |
+| 8 | 2026-01-17 | DONE | Headless 150k FPS |
+
+---
+
+## Notes
+- Physics tuned: GRAVITY=0.8, JUMP_VELOCITY=-7 (snappier feel)
+- Headless performance: 150,660 FPS (5000x realtime)
+- Determinism verified: 0 mismatches on playback
