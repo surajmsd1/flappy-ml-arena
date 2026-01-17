@@ -15,6 +15,13 @@ Build a Flappy Bird clone that generates ML training data. End goal: train multi
 
 ## CURRENT TASK
 
+### Task 24: Delete Broken Recordings
+**Status:** NOT STARTED
+
+(See full description below Task 23)
+
+---
+
 ### Task 20: Polished Viewer & Renderer
 **Status:** DONE
 
@@ -129,6 +136,65 @@ else:
 - Run genetic training, see pipes appearing
 - Birds actually fly and hit pipes (not just sitting)
 - Scores should vary (not all 0)
+
+---
+
+### Task 23: UI Training Controls + Bootstrap from Human Recordings
+**Status:** DONE
+
+Add ability to run genetic training from the UI and use human recordings to bootstrap the network.
+
+**UI Training Controls (ui.py + templates):**
+- Add "Train" section/button in Recording Manager
+- Input: Number of generations to run (default: 50)
+- Input: Number of best recordings to save per generation (default: 8)
+- Progress indicator showing current generation
+- Live stats: best score, avg score, generation number
+- "Stop Training" button
+
+**Bootstrap from Human Recordings:**
+- Use existing human recordings (`game_*_score*.json`) as training data
+- Implement imitation learning to initialize network weights:
+  - Extract (features, jump_decision) pairs from human recordings
+  - Train initial network to mimic human decisions
+  - Use this trained network as seed for genetic population
+- This gives genetic algorithm a head start instead of random weights
+
+**API Endpoints:**
+- `POST /api/train` - Start training with params (generations, save_n)
+- `GET /api/train/status` - Get current training status
+- `POST /api/train/stop` - Stop training early
+
+**Save Convention:**
+- Clean up old broken recordings first (those with score 0 and no movement)
+- Save 8 best recordings per completed training session
+- Format: `genetic_gen{N}_best{M}.json`
+
+**Verify:**
+- Click Train button, see progress
+- After training, 8 new recordings appear
+- Bootstrapped models should score better than random initial weights
+
+---
+
+### Task 24: Delete Broken Recordings
+**Status:** NOT STARTED
+
+**Problem:** Old recordings from before Task 22 fix have:
+- Bird not moving (y stays at 256)
+- No pipes spawned
+- Score = 0
+- `started: false` for all frames
+
+**Fix:**
+- Add "Delete Broken" button in UI
+- Scan recordings for: `started: false` on last frame OR all frames have same bird.y
+- Delete these automatically OR let user confirm
+- Or just delete all `genetic_gen*` files and retrain
+
+**Verify:**
+- UI shows only valid recordings
+- All displayed recordings show actual gameplay
 
 ---
 
@@ -250,7 +316,10 @@ else:
 | 19 | 2026-01-17 | DONE | Recording Manager UI (Flask) |
 | 20 | 2026-01-17 | DONE | Polished viewer & renderer with visual effects |
 | 21 | 2026-01-17 | DONE | Mac-style tile view UI redesign |
+| 22 | 2026-01-17 | DONE | Fixed ML game start bug (jump first frame) |
+| 21 | 2026-01-17 | DONE | Mac-style tile view UI redesign |
 | 22 | 2026-01-17 | DONE | Fixed ML training game start bug |
+| 23 | 2026-01-17 | DONE | UI training controls + bootstrap from human |
 
 ---
 

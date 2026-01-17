@@ -422,6 +422,128 @@
         .model-stat .detail strong {
             color: #1d1d1f;
         }
+
+        /* Training Panel */
+        .training-panel {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .training-panel h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .training-controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .training-controls label {
+            font-size: 13px;
+            color: #86868b;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .training-controls input[type="number"] {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #d2d2d7;
+            background: #f5f5f7;
+            font-size: 14px;
+            width: 80px;
+        }
+        .training-controls input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        .training-controls .checkbox-label {
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+        }
+        .training-btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            background: #34c759;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .training-btn:hover {
+            background: #2db84d;
+        }
+        .training-btn.stop {
+            background: #ff3b30;
+        }
+        .training-btn.stop:hover {
+            background: #e0352b;
+        }
+        .training-btn:disabled {
+            background: #c7c7cc;
+            cursor: not-allowed;
+        }
+        .training-progress {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f5f5f7;
+            border-radius: 10px;
+            display: none;
+        }
+        .training-progress.active {
+            display: block;
+        }
+        .progress-bar-container {
+            height: 8px;
+            background: #d2d2d7;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #34c759;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .progress-stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .progress-stat {
+            font-size: 13px;
+            color: #86868b;
+        }
+        .progress-stat strong {
+            color: #1d1d1f;
+            font-size: 16px;
+        }
+        .delete-broken-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: #ff9500;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        .delete-broken-btn:hover {
+            background: #e08600;
+        }
     </style>
 </head>
 <body>
@@ -440,6 +562,39 @@
             <div class="stat-card">
                 <h3>Storage</h3>
                 <div class="value" id="totalSize">-</div>
+            </div>
+        </div>
+
+        <!-- Training Panel -->
+        <div class="training-panel">
+            <h2>🧬 Genetic Training</h2>
+            <div class="training-controls">
+                <label>
+                    Generations
+                    <input type="number" id="trainGenerations" value="50" min="1" max="500">
+                </label>
+                <label>
+                    Save Best N
+                    <input type="number" id="trainSaveN" value="8" min="1" max="20">
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="trainBootstrap" checked>
+                    Bootstrap from human recordings
+                </label>
+                <button id="trainBtn" class="training-btn" onclick="startTraining()">▶ Start Training</button>
+                <button id="stopTrainBtn" class="training-btn stop" onclick="stopTraining()" style="display: none;">⏹ Stop</button>
+                <button class="delete-broken-btn" onclick="deleteBroken()">🗑 Delete Broken</button>
+            </div>
+            <div class="training-progress" id="trainingProgress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-stats">
+                    <div class="progress-stat">Generation: <strong id="progressGen">0/0</strong></div>
+                    <div class="progress-stat">Best Score: <strong id="progressBest">0</strong></div>
+                    <div class="progress-stat">Avg Score: <strong id="progressAvg">0</strong></div>
+                    <div class="progress-stat">Best Frames: <strong id="progressFrames">0</strong></div>
+                </div>
             </div>
         </div>
 
@@ -843,9 +998,150 @@
             }, 3000);
         }
 
+        // ============================================================
+        // Training Functions
+        // ============================================================
+
+        let trainingPollInterval = null;
+
+        async function startTraining() {
+            const generations = parseInt(document.getElementById('trainGenerations').value);
+            const saveN = parseInt(document.getElementById('trainSaveN').value);
+            const bootstrap = document.getElementById('trainBootstrap').checked;
+
+            try {
+                const response = await fetch('/api/train', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        generations: generations,
+                        save_n: saveN,
+                        bootstrap: bootstrap
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`Training started: ${generations} generations`, 'success');
+                    document.getElementById('trainBtn').style.display = 'none';
+                    document.getElementById('stopTrainBtn').style.display = 'inline-block';
+                    document.getElementById('trainingProgress').classList.add('active');
+                    startTrainingPoll();
+                } else {
+                    showToast(result.error, 'error');
+                }
+            } catch (err) {
+                showToast('Error starting training', 'error');
+            }
+        }
+
+        async function stopTraining() {
+            try {
+                const response = await fetch('/api/train/stop', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Stopping training...', 'success');
+                }
+            } catch (err) {
+                showToast('Error stopping training', 'error');
+            }
+        }
+
+        function startTrainingPoll() {
+            if (trainingPollInterval) clearInterval(trainingPollInterval);
+            trainingPollInterval = setInterval(pollTrainingStatus, 1000);
+            pollTrainingStatus(); // Immediate first poll
+        }
+
+        async function pollTrainingStatus() {
+            try {
+                const response = await fetch('/api/train/status');
+                const status = await response.json();
+
+                // Update progress UI
+                const pct = status.total_generations > 0
+                    ? Math.round((status.generation / status.total_generations) * 100)
+                    : 0;
+
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('progressGen').textContent =
+                    `${status.generation}/${status.total_generations}`;
+                document.getElementById('progressBest').textContent = status.best_score;
+                document.getElementById('progressAvg').textContent = status.avg_score;
+                document.getElementById('progressFrames').textContent = status.best_frames;
+
+                // Check if training is done
+                if (!status.running) {
+                    clearInterval(trainingPollInterval);
+                    trainingPollInterval = null;
+
+                    document.getElementById('trainBtn').style.display = 'inline-block';
+                    document.getElementById('stopTrainBtn').style.display = 'none';
+
+                    if (status.error) {
+                        showToast('Training error: ' + status.error, 'error');
+                    } else if (status.generation > 0) {
+                        showToast(`Training complete! Best score: ${status.best_score}`, 'success');
+                        // Refresh recordings
+                        loadRecordings();
+                        loadStats();
+                    }
+
+                    // Hide progress after a delay
+                    setTimeout(() => {
+                        document.getElementById('trainingProgress').classList.remove('active');
+                    }, 5000);
+                }
+            } catch (err) {
+                console.error('Error polling training status:', err);
+            }
+        }
+
+        async function deleteBroken() {
+            if (!confirm('Delete all broken recordings (score=0, not started)?')) return;
+
+            try {
+                const response = await fetch('/api/delete_broken', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.deleted > 0) {
+                    showToast(`Deleted ${result.deleted} broken recording(s)`, 'success');
+                    loadRecordings();
+                    loadStats();
+                } else {
+                    showToast('No broken recordings found', 'success');
+                }
+            } catch (err) {
+                showToast('Error deleting broken recordings', 'error');
+            }
+        }
+
+        // Check training status on page load
+        async function checkInitialTrainingStatus() {
+            try {
+                const response = await fetch('/api/train/status');
+                const status = await response.json();
+
+                if (status.running) {
+                    document.getElementById('trainBtn').style.display = 'none';
+                    document.getElementById('stopTrainBtn').style.display = 'inline-block';
+                    document.getElementById('trainingProgress').classList.add('active');
+                    startTrainingPoll();
+                }
+            } catch (err) {
+                console.error('Error checking training status:', err);
+            }
+        }
+
         // Initial load
         loadRecordings();
         loadStats();
+        checkInitialTrainingStatus();
     </script>
 </body>
 </html>

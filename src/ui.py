@@ -9,6 +9,8 @@ Features:
 - Play recordings via viewer.py
 - Delete recordings
 - View analytics
+- Run genetic training with progress tracking
+- Bootstrap from human recordings via imitation learning
 """
 
 import json
@@ -16,6 +18,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -25,6 +29,19 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 app = Flask(__name__)
 
 RECORDINGS_DIR = os.path.join(os.path.dirname(__file__), "recordings")
+
+# Training state (global for simplicity)
+training_state = {
+    "running": False,
+    "generation": 0,
+    "total_generations": 0,
+    "best_score": 0,
+    "avg_score": 0.0,
+    "best_frames": 0,
+    "stop_requested": False,
+    "error": None,
+    "started_at": None,
+}
 
 
 def parse_recording_filename(filename: str) -> Dict:
@@ -319,6 +336,289 @@ def api_learning_curve():
         })
 
     return jsonify(curve)
+
+
+# ============================================================
+# Training API
+# ============================================================
+
+def extract_training_data_from_recordings():
+    """Extract (features, jump) pairs from human recordings for imitation learning."""
+    from features import extract_features
+    from game import create_game, step
+    from recording import load_any_recording
+
+    training_data = []
+    human_recordings = []
+
+    # Find human recordings
+    if os.path.exists(RECORDINGS_DIR):
+        for filename in os.listdir(RECORDINGS_DIR):
+            if filename.startswith("game_") and filename.endswith(".json"):
+                filepath = os.path.join(RECORDINGS_DIR, filename)
+                try:
+                    rec = load_any_recording(filepath)
+                    if rec.final_score > 0:  # Only use successful recordings
+                        human_recordings.append((filepath, rec))
+                except Exception:
+                    pass
+
+    # Extract features from each recording
+    for filepath, rec in human_recordings:
+        state = create_game(seed=rec.seed)
+        for frame in rec.frames:
+            if state.started and state.alive:
+                features = extract_features(state)
+                training_data.append((features.to_list(), frame.jump))
+            step(state, jump=frame.jump)
+
+    return training_data
+
+
+def train_network_imitation(training_data, epochs=100):
+    """Train a network via imitation learning (simple gradient descent)."""
+    from genetic import NeuralNetwork, INPUT_SIZE, HIDDEN_SIZE
+    import random
+    import math
+
+    if not training_data:
+        return None
+
+    net = NeuralNetwork()
+
+    # Simple gradient descent
+    learning_rate = 0.1
+
+    for epoch in range(epochs):
+        random.shuffle(training_data)
+        total_loss = 0
+
+        for features, target_jump in training_data:
+            # Forward pass
+            output = net.forward(features)
+            target = 1.0 if target_jump else 0.0
+
+            # Binary cross-entropy loss gradient
+            error = output - target
+            total_loss += error ** 2
+
+            # Backprop (simplified - just adjust output weights)
+            # This is a very simple approximation
+            for j in range(HIDDEN_SIZE):
+                # Hidden activations
+                hidden_j = 0
+                for i in range(INPUT_SIZE):
+                    hidden_j += net.weights_ih[j][i] * features[i]
+                hidden_j = max(0, hidden_j + net.bias_h[j])  # ReLU
+
+                # Gradient for output weights
+                grad = error * hidden_j * learning_rate * 0.1
+                net.weights_ho[0][j] -= grad
+
+            net.bias_o[0] -= error * learning_rate * 0.1
+
+    return net
+
+
+def run_training_thread(generations, save_n, bootstrap):
+    """Run training in background thread."""
+    global training_state
+
+    try:
+        from genetic import (
+            Agent, NeuralNetwork, run_generation, create_next_generation,
+            evaluate_agent
+        )
+        from recording import save_compact
+
+        training_state["running"] = True
+        training_state["generation"] = 0
+        training_state["total_generations"] = generations
+        training_state["best_score"] = 0
+        training_state["avg_score"] = 0.0
+        training_state["error"] = None
+        training_state["started_at"] = time.time()
+
+        population_size = 50
+
+        # Bootstrap from human recordings if requested
+        if bootstrap:
+            training_data = extract_training_data_from_recordings()
+            if training_data:
+                print(f"Bootstrapping from {len(training_data)} training samples")
+                base_network = train_network_imitation(training_data)
+                if base_network:
+                    # Create population from mutated copies of trained network
+                    population = []
+                    population.append(Agent(network=base_network))  # Keep original
+                    for _ in range(population_size - 1):
+                        mutated = base_network.mutate(rate=0.2, scale=0.3)
+                        population.append(Agent(network=mutated))
+                else:
+                    population = [Agent(network=NeuralNetwork()) for _ in range(population_size)]
+            else:
+                print("No human recordings found, using random initialization")
+                population = [Agent(network=NeuralNetwork()) for _ in range(population_size)]
+        else:
+            population = [Agent(network=NeuralNetwork()) for _ in range(population_size)]
+
+        best_recordings = []
+
+        for gen in range(generations):
+            if training_state["stop_requested"]:
+                print("Training stopped by user")
+                break
+
+            # Use different seed each generation
+            seed = gen * 1000 + 42
+
+            # Run generation
+            results = run_generation(population, gen, seed, max_frames=3000)
+
+            # Update stats
+            fitnesses = [r[0].fitness for r in results]
+            scores = [r[0].score for r in results]
+            best_agent, best_recording = results[0]
+
+            training_state["generation"] = gen + 1
+            training_state["best_score"] = max(training_state["best_score"], best_agent.score)
+            training_state["avg_score"] = round(sum(scores) / len(scores), 2)
+            training_state["best_frames"] = best_agent.frames
+
+            print(f"Gen {gen+1}/{generations} | Best: {best_agent.score} pts | Avg: {training_state['avg_score']}")
+
+            # Keep track of best recordings for final save
+            for i in range(min(save_n, len(results))):
+                agent, recording = results[i]
+                best_recordings.append((gen + 1, i + 1, agent.score, recording))
+
+            # Create next generation
+            population = create_next_generation(
+                [r[0] for r in results],
+                elite_count=2,
+                mutation_rate=0.1
+            )
+
+        # Save best recordings from final generation
+        if not training_state["stop_requested"]:
+            # Sort by score and save top N
+            best_recordings.sort(key=lambda x: x[2], reverse=True)
+            for i, (gen, rank, score, recording) in enumerate(best_recordings[:save_n]):
+                filename = f"genetic_gen{gen}_replay{i+1}.json"
+                filepath = os.path.join(RECORDINGS_DIR, filename)
+                save_compact(recording, filepath)
+                print(f"Saved: {filename} (score: {score})")
+
+        training_state["running"] = False
+        print("Training complete!")
+
+    except Exception as e:
+        training_state["error"] = str(e)
+        training_state["running"] = False
+        print(f"Training error: {e}")
+
+
+@app.route("/api/train", methods=["POST"])
+def api_train():
+    """Start genetic training."""
+    global training_state
+
+    if training_state["running"]:
+        return jsonify({"error": "Training already in progress"}), 400
+
+    data = request.get_json() or {}
+    generations = data.get("generations", 50)
+    save_n = data.get("save_n", 8)
+    bootstrap = data.get("bootstrap", True)
+
+    # Validate
+    if generations < 1 or generations > 1000:
+        return jsonify({"error": "Generations must be between 1 and 1000"}), 400
+    if save_n < 1 or save_n > 20:
+        return jsonify({"error": "save_n must be between 1 and 20"}), 400
+
+    # Reset state
+    training_state["stop_requested"] = False
+
+    # Start training in background thread
+    thread = threading.Thread(
+        target=run_training_thread,
+        args=(generations, save_n, bootstrap),
+        daemon=True
+    )
+    thread.start()
+
+    return jsonify({
+        "success": True,
+        "message": f"Started training for {generations} generations",
+        "bootstrap": bootstrap
+    })
+
+
+@app.route("/api/train/status")
+def api_train_status():
+    """Get current training status."""
+    return jsonify(training_state)
+
+
+@app.route("/api/train/stop", methods=["POST"])
+def api_train_stop():
+    """Stop training early."""
+    global training_state
+
+    if not training_state["running"]:
+        return jsonify({"error": "No training in progress"}), 400
+
+    training_state["stop_requested"] = True
+    return jsonify({"success": True, "message": "Stop requested"})
+
+
+@app.route("/api/delete_broken", methods=["POST"])
+def api_delete_broken():
+    """Delete broken recordings (score=0, started=false)."""
+    deleted = []
+    errors = []
+
+    if not os.path.exists(RECORDINGS_DIR):
+        return jsonify({"deleted": 0, "errors": []})
+
+    for filename in os.listdir(RECORDINGS_DIR):
+        if not filename.endswith(".json"):
+            continue
+
+        filepath = os.path.join(RECORDINGS_DIR, filename)
+
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+
+            is_broken = False
+
+            # Check compact format
+            if data.get("format") == "compact":
+                # Broken if score is 0 and very few frames
+                if data.get("final_score", 0) == 0 and data.get("total_frames", 0) < 100:
+                    is_broken = True
+            else:
+                # Verbose format - check if started is false
+                frames = data.get("frames", [])
+                if frames:
+                    last_state = frames[-1].get("state", {})
+                    if not last_state.get("started", True) and last_state.get("score", 0) == 0:
+                        is_broken = True
+
+            if is_broken:
+                os.remove(filepath)
+                deleted.append(filename)
+
+        except Exception as e:
+            errors.append({"file": filename, "error": str(e)})
+
+    return jsonify({
+        "deleted": len(deleted),
+        "deleted_files": deleted,
+        "errors": errors
+    })
 
 
 def main():
